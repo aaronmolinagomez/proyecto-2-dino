@@ -54,7 +54,17 @@ class Config:
     reward_alive: float = 1.0
     reward_progress: float = 0.05
     max_time: float = 60.0
-    fast_dt: float = 0.008  # ~125 FPS equivalente en modo rapido
+    fast_dt: float = 0.008  # ~125 FPS equivalente en modo rapido (fidelidad razonable)
+    # Discretizacion para iteracion de valor (PD)
+    y_bucket: int = 4
+    vy_bucket: int = 40
+    x_bucket: int = 8
+    speed_bucket: int = 20
+    y_bucket_max: int = 80
+    vy_bucket_min: int = -30
+    vy_bucket_max: int = 30
+    x_bucket_max: int = 200
+    speed_bucket_max: int = 120
 
 
 BLACK = (20, 20, 20)
@@ -299,6 +309,8 @@ class DPAgent:
         return best_action, best_score
 
 
+
+
 class RandomPolicy:
     def decide(self, player: Player) -> Action:
         if player.on_ground:
@@ -434,7 +446,10 @@ def main():
     if args.max_time is not None:
         cfg.max_time = args.max_time
     game = Game(cfg, args.mode, args.episodes, headless=args.headless, rng=rng, fast=args.fast)
-    scores, durations = game.run()
+    try:
+        scores, durations = game.run()
+    finally:
+        pygame.quit()
     avg = sum(scores) / len(scores)
     med = stats.median(scores)
     best = max(scores)

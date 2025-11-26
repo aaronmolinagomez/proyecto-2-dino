@@ -12,11 +12,12 @@ def read_scores(csv_path: Path):
     return scores
 
 def plot_lines(agent_scores, random_scores, human_scores, out: Path):
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.plot(range(1, len(agent_scores)+1), agent_scores, color="blue", marker="o", label="Agente DP")
-    ax.plot(range(1, len(random_scores)+1), random_scores, color="red", marker="o", label="Aleatorio")
+    fig, ax = plt.subplots(figsize=(9, 5))
+    style_kwargs = dict(linewidth=1.2, markersize=4, alpha=0.8)
+    ax.plot(range(1, len(agent_scores) + 1), agent_scores, color="blue", marker="o", label="Agente DP", **style_kwargs)
+    ax.plot(range(1, len(random_scores) + 1), random_scores, color="red", marker="o", label="Aleatorio", **style_kwargs)
     if human_scores:
-        ax.plot(range(1, len(human_scores)+1), human_scores, color="green", marker="o", label="Humano")
+        ax.plot(range(1, len(human_scores) + 1), human_scores, color="green", marker="o", label="Humano", **style_kwargs)
     ax.set_xlabel("Episodio")
     ax.set_ylabel("Puntaje")
     ax.set_title("Comparacion de puntajes por episodio")

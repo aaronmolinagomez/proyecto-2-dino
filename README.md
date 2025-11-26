@@ -5,6 +5,8 @@
 - Agente DP: `python main.py --mode agent --episodes 10 --headless --seed 1 --max_time 30 --save_csv agent.csv`
 - Baseline aleatorio: `python main.py --mode random --episodes 10 --headless --seed 1 --max_time 30 --save_csv random.csv`
 - Graficar comparacion (requiere matplotlib): `python plot_results.py --agent_csv agent.csv --random_csv random.csv --out scores.png`
+- Entrenar politica por Iteracion de Valor (PD): `python main.py --train_vi --vi_policy_file vi_policy.json --vi_max_states 30000 --vi_max_iters 150`
+- Usar la politica VI entrenada: `python main.py --mode agent --vi_policy_file vi_policy.json --episodes 10 --headless`
 
 ## Diseno
 - Entidades POO: Player (fisica salto/duck), Obstacle/ObstacleManager (spawns con ramp-up de dificultad y clusters bajos), DPAgent (backup Bellman con memoizacion y discretizacion), Game (loop/render/UI), RandomPolicy (baseline).
