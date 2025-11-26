@@ -54,6 +54,7 @@ class Config:
     reward_alive: float = 1.0
     reward_progress: float = 0.05
     max_time: float = 60.0
+    fast_dt: float = 0.008  # ~125 FPS equivalente en modo rapido
 
 
 BLACK = (20, 20, 20)
@@ -306,11 +307,12 @@ class RandomPolicy:
 
 
 class Game:
-    def __init__(self, cfg: Config, mode: str, episodes: int, headless: bool = False, rng: random.Random | None = None):
+    def __init__(self, cfg: Config, mode: str, episodes: int, headless: bool = False, rng: random.Random | None = None, fast: bool = False):
         self.cfg = cfg
         self.mode = mode
         self.episodes = episodes
         self.rng = rng or random.Random()
+        self.fast = fast
         if headless:
             os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
         pygame.init()
@@ -342,7 +344,11 @@ class Game:
         score = 0.0
 
         while alive and t < self.cfg.max_time:
-            dt = self.clock.tick(60) / 1000.0
+            if self.fast:
+                dt = self.cfg.fast_dt
+                pygame.event.pump()
+            else:
+                dt = self.clock.tick(60) / 1000.0
             t += dt
             difficulty = min(1.0, self.cfg.min_difficulty + t / self.cfg.ramp_time)
             speed_factor = 0.55 + 0.45 * difficulty
@@ -414,6 +420,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=None, help="Semilla para reproducibilidad")
     parser.add_argument("--save_csv", type=str, default=None, help="Ruta para guardar puntajes por episodio")
     parser.add_argument("--max_time", type=float, default=None, help="Tiempo maximo por episodio (segundos)")
+    parser.add_argument("--fast", action="store_true", help="Modo rapido (salta limitacion de FPS en headless)")
     return parser.parse_args()
 
 
@@ -426,7 +433,7 @@ def main():
     cfg = Config()
     if args.max_time is not None:
         cfg.max_time = args.max_time
-    game = Game(cfg, args.mode, args.episodes, headless=args.headless, rng=rng)
+    game = Game(cfg, args.mode, args.episodes, headless=args.headless, rng=rng, fast=args.fast)
     scores, durations = game.run()
     avg = sum(scores) / len(scores)
     med = stats.median(scores)
