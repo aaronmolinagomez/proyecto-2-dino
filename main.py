@@ -30,6 +30,7 @@ class PlayerState(Enum):
 
 @dataclass
 class Config:
+    # Parametros de simulacion, fisica y discretizacion para DP.
     width: int = 960
     height: int = 360
     player_x: int = 120
@@ -95,6 +96,7 @@ class Player:
         self.y += delta
 
     def update(self, action: Action, dt: float):
+        # Integracion simple de movimiento vertical y cambio de postura.
         if action == Action.JUMP and self.on_ground:
             self.vy = self.cfg.jump_velocity
             self.state = PlayerState.JUMP
@@ -169,6 +171,7 @@ class ObstacleManager:
         self.difficulty = max(self.cfg.min_difficulty, min(1.0, difficulty))
 
     def update(self, dt: float, speed: float):
+        # Mueve obstaculos existentes y decide spawns con dificultad creciente.
         self.elapsed += dt
         for ob in self.obstacles:
             ob.x -= speed * dt
@@ -205,6 +208,7 @@ class DPAgent:
         self.memo = {}
 
     def decide(self, player: Player, obstacles: List[Obstacle], speed: float) -> Action:
+        # Busca accion via backup Bellman recursivo sobre un estado discretizado.
         snapshot = self._snapshot(player, obstacles)
         self.memo.clear()
         action, _ = self._search(snapshot, speed, self.cfg.dp_depth)
@@ -313,6 +317,7 @@ class DPAgent:
 
 class RandomPolicy:
     def decide(self, player: Player) -> Action:
+        # Baseline simple: elige aleatorio cuando esta en el suelo.
         if player.on_ground:
             return random.choice([Action.NONE, Action.JUMP, Action.DUCK])
         return Action.NONE
@@ -348,6 +353,7 @@ class Game:
         return scores, durations
 
     def _run_episode(self, episode_idx: int) -> float:
+        # Bucle principal de simulacion por episodio.
         player = Player(self.cfg)
         obstacles = ObstacleManager(self.cfg, self.rng)
         speed = self.cfg.base_speed
