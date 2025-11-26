@@ -119,12 +119,12 @@ class Obstacle:
             y = cfg.ground_y - h
             w = 32
         elif self.kind == ObstacleKind.MID:
-            h = 64
-            y = cfg.ground_y - h
-            w = 40
+            h = 34
+            y = cfg.ground_y - 140  # vuelo alto, se pasa sin saltar
+            w = 46
         else:
             h = 34
-            y = cfg.ground_y - 130
+            y = cfg.ground_y - 90  # obstaculo volador bajo: requiere agacharse
             w = 46
         return w, h, y
 
@@ -170,8 +170,20 @@ class ObstacleManager:
 
         if self.distance_since_last >= self.next_gap and len(self.obstacles) < self.cfg.obstacle_max:
             spawn_x = self.cfg.width + self.rng.randint(0, 60)
-            kind = self.rng.choice(list(ObstacleKind))
-            self.obstacles.append(Obstacle(kind, spawn_x, self.cfg))
+            kind = self.rng.choice([ObstacleKind.LOW, ObstacleKind.MID, ObstacleKind.HIGH])
+            if kind == ObstacleKind.LOW:
+                roll = self.rng.random()
+                count = 1 if roll < 1/3 else 2 if roll < 2/3 else 3
+                gap_px = 2
+                x_pos = spawn_x
+                for _ in range(count):
+                    if len(self.obstacles) >= self.cfg.obstacle_max:
+                        break
+                    ob = Obstacle(kind, x_pos, self.cfg)
+                    self.obstacles.append(ob)
+                    x_pos += ob.width + gap_px
+            else:
+                self.obstacles.append(Obstacle(kind, spawn_x, self.cfg))
             self.distance_since_last = 0.0
             self.next_gap = self._next_gap()
 
@@ -199,10 +211,11 @@ class DPAgent:
         height = self.cfg.duck_height if duck else self.cfg.run_height
         return pygame.Rect(self.cfg.player_x, int(y), self.cfg.player_width, height)
 
-    def _collides(self, y: float, duck: bool, obstacles: List[dict]) -> bool:
+    def _collides(self, y: float, duck: bool, obstacles) -> bool:
         rect = self._player_rect_from_state(y, duck)
         for ob in obstacles:
-            ob_rect = pygame.Rect(int(ob["x"]), int(ob["y"]), ob["w"], ob["h"])
+            x, oy, w, h, _ = ob
+            ob_rect = pygame.Rect(int(x), int(oy), w, h)
             if rect.colliderect(ob_rect):
                 return True
         return False
@@ -229,13 +242,12 @@ class DPAgent:
 
         return y, vy, duck
 
-    def _step_obstacles(self, obstacles: List[dict], speed: float) -> List[dict]:
+    def _step_obstacles(self, obstacles, speed: float):
         next_obs = []
-        for ob in obstacles:
-            ob = dict(ob)
-            ob["x"] -= speed * self.cfg.dp_dt
-            if ob["x"] + ob["w"] > 0:
-                next_obs.append(ob)
+        for x, y, w, h, kind in obstacles:
+            x -= speed * self.cfg.dp_dt
+            if x + w > 0:
+                next_obs.append((x, y, w, h, kind))
         return next_obs
 
     def _state_key(self, y: float, vy: float, duck: bool, obstacles, speed: float):
@@ -243,14 +255,8 @@ class DPAgent:
             return int(round(val / size))
 
         obs_key = []
-        for ob in list(obstacles)[:2]:
-            if isinstance(ob, dict):
-                x = ob["x"]
-                kind_val = ob["kind"].value
-            else:
-                x = ob[0]
-                kind_val = ob[4].value
-            obs_key.append((bucket(x, 8), kind_val))
+        for x, _, _, _, kind in list(obstacles)[:2]:
+            obs_key.append((bucket(x, 8), kind.value))
         return (bucket(y, 4), bucket(vy, 40), duck, tuple(obs_key), bucket(speed, 20))
 
     def _search(self, state, speed: float, depth: int) -> Tuple[Action, float]:
@@ -266,7 +272,7 @@ class DPAgent:
 
         for action in actions:
             sim_y, sim_vy, sim_duck = y, vy, duck
-            sim_obs = [dict(x=x, y=y, w=w, h=h, kind=k) for (x, y, w, h, k) in obstacles]
+            sim_obs = list(obstacles)
             alive = True
             gained = 0.0
 
@@ -280,7 +286,7 @@ class DPAgent:
 
             total_score = -1000.0 if not alive else gained
             if alive and depth > 1:
-                next_state = (sim_y, sim_vy, sim_duck, tuple((o["x"], o["y"], o["w"], o["h"], o["kind"]) for o in sim_obs))
+                next_state = (sim_y, sim_vy, sim_duck, tuple(sim_obs))
                 _, child_score = self._search(next_state, speed, depth - 1)
                 total_score += self.cfg.gamma * child_score
 
@@ -384,7 +390,7 @@ class Game:
         pygame.draw.rect(self.screen, color, player.rect(), border_radius=6)
 
         for ob in obstacles.obstacles:
-            ob_color = RED if ob.kind == ObstacleKind.MID else BLACK if ob.kind == ObstacleKind.LOW else ORANGE
+            ob_color = BLACK if ob.kind == ObstacleKind.LOW else ORANGE
             pygame.draw.rect(self.screen, ob_color, ob.rect(), border_radius=4)
 
         info_lines = [
