@@ -1,0 +1,10 @@
+# Archivos y carpetas generados localmente (no versionar)
+__pycache__/
+results/
+results5/
+results10/
+results20/
+results50/
+results100/
+*.png
+*.csv

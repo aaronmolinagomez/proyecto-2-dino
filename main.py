@@ -56,6 +56,7 @@ class Config:
     short_gap: int = 190        # Distancia base corta entre spawns de obstáculos (antes de aplicar aleatoriedad).
     long_gap: int = 320         # Distancia base larga para intervalos más amplios entre obstáculos.
     obstacle_max: int = 3       # Máximo de obstáculos simultáneos permitidos en pantalla.
+    spawn_delay_scale: float = 1.25  # Factor >1 alarga la distancia/tiempo entre spawns (1.0 = default).
 
     # Parámetros del agente DP
     dp_dt: float = 0.05          # Paso temporal usado en la simulación interna del DP (más pequeño y rápido que el dt real).
@@ -121,6 +122,8 @@ class Player:
         # --- Manejo de acciones ---
         if action == Action.JUMP and self.on_ground:
             # Inicio del salto: velocidad vertical inicial y cambio de estado
+            if self.state == PlayerState.DUCK:
+                self._set_height(self.cfg.run_height)  # No se puede saltar agachado
             self.vy = self.cfg.jump_velocity
             self.state = PlayerState.JUMP
             self.on_ground = False
@@ -220,7 +223,7 @@ class ObstacleManager:
         gap_scale = 1.8 - 0.8 * self.difficulty
         
         # Distancia final al próximo spawn, con aleatoriedad adicional
-        return base * gap_scale * self.rng.uniform(0.9, 1.15)
+        return base * gap_scale * self.rng.uniform(0.9, 1.15) * self.cfg.spawn_delay_scale
         
     def reset(self):
         # Limpia todos los obstáculos activos
@@ -241,8 +244,8 @@ class ObstacleManager:
     def set_difficulty(self, difficulty: float):
         # Ajusta la dificultad dentro del rango permitido [min_difficulty, 1.0]
         self.difficulty = max(self.cfg.min_difficulty, min(1.0, difficulty))
-        
-        def update(self, dt: float, speed: float):
+
+    def update(self, dt: float, speed: float):
         # Mueve obstáculos existentes y decide nuevos spawns según la dificultad
         self.elapsed += dt
 
@@ -261,8 +264,12 @@ class ObstacleManager:
             self.distance_since_last = 0.0
             return
 
-        # --- Condición de spawn: suficiente distancia + límite máximo en pantalla ---
-        if self.distance_since_last >= self.next_gap and len(self.obstacles) < self.cfg.obstacle_max:
+        # --- Condición de spawn: suficiente distancia + control de cupos ---
+        # Para LOW en serie, permitimos usar 2 slots extra para que un trío cuente como "uno".
+        can_spawn_low = len(self.obstacles) < self.cfg.obstacle_max + 2
+        can_spawn_other = len(self.obstacles) < self.cfg.obstacle_max
+
+        if self.distance_since_last >= self.next_gap:
 
             # Posición horizontal del próximo obstáculo (ligero desplazamiento aleatorio)
             spawn_x = self.cfg.width + self.rng.randint(0, 60)
@@ -270,17 +277,20 @@ class ObstacleManager:
             # Selección del tipo de obstáculo
             kind = self.rng.choice([ObstacleKind.LOW, ObstacleKind.MID, ObstacleKind.HIGH])
 
+            if kind == ObstacleKind.LOW and not can_spawn_low:
+                return
+            if kind != ObstacleKind.LOW and not can_spawn_other:
+                return
+
             # --- Caso especial: cactus bajos pueden venir en grupos de 1 a 3 ---
             if kind == ObstacleKind.LOW:
                 roll = self.rng.random()
-                count = 1 if roll < 1/3 else 2 if roll < 2/3 else 3  # Número de cactus en fila
+                # Aumenta probabilidad de series: 20% uno, 40% dos, 40% tres
+                count = 1 if roll < 0.20 else 2 if roll < 0.60 else 3
                 gap_px = 2                                           # Pequeño espacio entre ellos
                 x_pos = spawn_x
 
                 for _ in range(count):
-                    if len(self.obstacles) >= self.cfg.obstacle_max:
-                        break
-
                     ob = Obstacle(kind, x_pos, self.cfg)
                     self.obstacles.append(ob)
                     x_pos += ob.width + gap_px                       # Avanza para el siguiente cactus
