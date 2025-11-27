@@ -244,7 +244,6 @@ class ObstacleManager:
     def set_difficulty(self, difficulty: float):
         # Ajusta la dificultad dentro del rango permitido [min_difficulty, 1.0]
         self.difficulty = max(self.cfg.min_difficulty, min(1.0, difficulty))
-
     def update(self, dt: float, speed: float):
         # Mueve obstáculos existentes y decide nuevos spawns según la dificultad
         self.elapsed += dt
