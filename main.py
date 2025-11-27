@@ -243,23 +243,23 @@ class ObstacleManager:
         self.difficulty = max(self.cfg.min_difficulty, min(1.0, difficulty))
         
         def update(self, dt: float, speed: float):
-        # Mueve obstáculos existentes y decide nuevos spawns según la dificultad
-        self.elapsed += dt
-
-        # --- Movimiento horizontal de todos los obstáculos ---
-        for ob in self.obstacles:
-            ob.x -= speed * dt                     # Se desplazan hacia la izquierda según la velocidad actual
-        
-        # Elimina obstáculos que ya salieron completamente de pantalla
-        self.obstacles = [ob for ob in self.obstacles if ob.x + ob.width > 0]
-
-        # --- Acumula distancia recorrida desde el último spawn ---
-        self.distance_since_last += speed * dt
-
-        # Fase inicial sin obstáculos (warmup)
-        if self.elapsed < self.cfg.warmup_time:
-            self.distance_since_last = 0.0
-            return
+            # Mueve obstáculos existentes y decide nuevos spawns según la dificultad
+            self.elapsed += dt
+    
+            # --- Movimiento horizontal de todos los obstáculos ---
+            for ob in self.obstacles:
+                ob.x -= speed * dt                     # Se desplazan hacia la izquierda según la velocidad actual
+            
+            # Elimina obstáculos que ya salieron completamente de pantalla
+            self.obstacles = [ob for ob in self.obstacles if ob.x + ob.width > 0]
+    
+            # --- Acumula distancia recorrida desde el último spawn ---
+            self.distance_since_last += speed * dt
+    
+            # Fase inicial sin obstáculos (warmup)
+            if self.elapsed < self.cfg.warmup_time:
+                self.distance_since_last = 0.0
+                return
 
         # --- Condición de spawn: suficiente distancia + límite máximo en pantalla ---
         if self.distance_since_last >= self.next_gap and len(self.obstacles) < self.cfg.obstacle_max:
