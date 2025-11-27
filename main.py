@@ -10,52 +10,64 @@ import pygame
 
 
 class Action(Enum):
-    NONE = 0
-    JUMP = auto()
-    DUCK = auto()
-    STAND = auto()
+    NONE = 0        # No hacer nada (acción neutra)
+    JUMP = auto()   # Saltar
+    DUCK = auto()   # Agacharse
+    STAND = auto()  # Levantarse desde estado agachado
 
 
 class ObstacleKind(Enum):
-    LOW = "low"
-    MID = "mid"
-    HIGH = "high"
+    LOW = "low"     # Obstáculo en el suelo (cactus)
+    MID = "mid"     # Obstáculo volador alto (no requiere salto)
+    HIGH = "high"   # Obstáculo volador bajo (requiere agacharse)
 
 
 class PlayerState(Enum):
-    RUN = auto()
-    JUMP = auto()
-    DUCK = auto()
+    RUN = auto()    # Corriendo en el suelo
+    JUMP = auto()   # En el aire
+    DUCK = auto()   # Agachado
 
 
 @dataclass
 class Config:
     # Parametros de simulacion, fisica y discretizacion para DP.
+    
+    # Parámetros visuales y del entorno
     width: int = 960
     height: int = 360
     player_x: int = 120
     ground_y: int = 300
+
+    # Física del jugador
     gravity: float = 2400.0
     jump_velocity: float = -1050.0
     player_width: int = 52
     run_height: int = 70
     duck_height: int = 40
+
+    # Velocidad y dificultad progresiva
     base_speed: float = 280.0
     speed_growth: float = 24.0
     min_difficulty: float = 0.35
     ramp_time: float = 35.0
     warmup_time: float = 1.6
+
+    # Generación de obstáculos
     short_gap: int = 190
     long_gap: int = 320
     obstacle_max: int = 2
-    dp_dt: float = 0.05
-    dp_depth: int = 12
-    rollout_steps: int = 2
-    gamma: float = 0.98
-    reward_alive: float = 1.0
-    reward_progress: float = 0.05
+
+    # Parámetros del agente DP
+    dp_dt: float = 0.05     # Paso temporal para simulación interna (más rápido)
+    dp_depth: int = 12      # Profundidad del árbol de búsqueda
+    rollout_steps: int = 2  # Pasos de simulación antes del backup
+    gamma: float = 0.98     # Descuento
+    reward_alive: float = 1.0 # Recompensa por sobrevivir
+    reward_progress: float = 0.05 # Recompensa por avanzar
+
     max_time: float = 60.0
-    fast_dt: float = 0.008  # ~125 FPS equivalente en modo rapido (fidelidad razonable)
+    fast_dt: float = 0.008  # # Modo headless rápido ~125 FPS equivalente en modo rapido (fidelidad razonable)
+    
     # Discretizacion para iteracion de valor (PD)
     y_bucket: int = 4
     vy_bucket: int = 40
